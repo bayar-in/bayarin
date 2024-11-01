@@ -6,6 +6,14 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// order struct
+type Order struct {
+	ID           primitive.ObjectID `json:"order_id,omitempty" bson:"_id,omitempty"`
+	Quantity     int                `json:"quantity,omitempty" bson:"quantity,omitempty"`
+	Payment	  []Payment          `json:"payment,omitempty" bson:"payment,omitempty"`
+	Slug         string             `bson:"slug" json:"slug"`
+}
+
 // Payment adalah struktur data untuk pembayaran
 type Payment struct {
 	ID           primitive.ObjectID `json:"payment_id,omitempty" bson:"_id,omitempty"`
