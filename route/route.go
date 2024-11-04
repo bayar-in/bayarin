@@ -185,7 +185,20 @@ func URL(w http.ResponseWriter, r *http.Request) {
 		controller.VerifyPasswordHandler(w, r)
 	case method == "POST" && path == "/auth/resend":
 		controller.ResendPasswordHandler(w, r)
-	// Google Auth
+	
+	// Payment
+	case method == "POST" && path == "/payment/process":
+		controller.HandlePayment(w, r)
+	// Add new payment to an order
+	case method == "POST" && path == "/payment/add":
+		controller.AddpembayaranToorder(w, r)
+	// Get payment details from an order
+	case method == "GET" && path == "/payment/details":
+		controller.Getpembayaran(w, r)
+	// Update payment details in an order
+	case method == "PUT" && path == "/payment/update":
+		controller.Updatepembayaran(w, r)
+	
 	default:
 		controller.NotFound(w, r)
 	}
