@@ -7,33 +7,55 @@ import (
 	"time"
 
 	"github.com/gocroot/config"
+	"github.com/gocroot/helper/payment"
 	"github.com/gocroot/model"
-	
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// CreatePembayaran untuk menambahkan pembayaran baru
+func HandlePayment(w http.ResponseWriter, r *http.Request) {
+	var paymentRequest model.PaymentRequest
+	if err := json.NewDecoder(r.Body).Decode(&paymentRequest); err != nil {
+		http.Error(w, "Invalid request data", http.StatusBadRequest)
+		return
+	}
+
+	// Lakukan proses pembayaran dengan fungsi yang sesuai di helper/payment
+	result, err := payment.ProcessPayment(paymentRequest)
+	if err != nil {
+		http.Error(w, "Payment processing failed", http.StatusInternalServerError)
+		return
+	}
+
+	// Berikan respon sukses jika berhasil
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
+// AddpembayaranToorder untuk menambahkan pembayaran baru ke dalam order
 func AddpembayaranToorder(w http.ResponseWriter, r *http.Request) {
-	// Mengambil slug dari query parameter
-	slug := r.URL.Query().Get("slug")
+	// Mengambil ID order dari query parameter
+	orderID := r.URL.Query().Get("id")
+	objID, err := primitive.ObjectIDFromHex(orderID)
+	if err != nil {
+		http.Error(w, "Invalid order ID", http.StatusBadRequest)
+		return
+	}
 
 	// Dekode body permintaan untuk mendapatkan detail pembayaran baru
 	var newpembayaran model.Payment
-	err := json.NewDecoder(r.Body).Decode(&newpembayaran)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&newpembayaran); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
 
 	// Set id pembayaran baru dan waktu pembuatan
-	newpembayaran.ID = primitive.NewObjectID()       // Set ObjectID baru untuk pembayaran
-	newpembayaran.CreatedAt = time.Now()             // Set waktu saat ini untuk createdAt
-	newpembayaran.UpdatedAt = time.Now()             // Set waktu saat ini untuk updatedAt
+	newpembayaran.ID = primitive.NewObjectID() // Set ObjectID baru untuk pembayaran
+	newpembayaran.CreatedAt = time.Now()       // Set waktu saat ini untuk createdAt
+	newpembayaran.UpdatedAt = time.Now()       // Set waktu saat ini untuk updatedAt
 
-	// Membuat filter untuk mencocokkan order berdasarkan slug
-	filter := bson.M{"slug": slug}
-
+	// Membuat filter untuk mencocokkan order berdasarkan ObjectID
+	filter := bson.M{"_id": objID}
 	update := bson.M{
 		"$push": bson.M{
 			"pembayaran": newpembayaran,
@@ -62,13 +84,18 @@ func AddpembayaranToorder(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"message": "pembayaran added successfully"}`))
 }
 
-// GetPembayaran untuk mendapatkan detail pembayaran
+// Getpembayaran untuk mendapatkan detail pembayaran dari sebuah order
 func Getpembayaran(w http.ResponseWriter, r *http.Request) {
-	// Mengambil slug dari query parameter
-	slug := r.URL.Query().Get("slug")
+	// Mengambil ID order dari query parameter
+	orderID := r.URL.Query().Get("id")
+	objID, err := primitive.ObjectIDFromHex(orderID)
+	if err != nil {
+		http.Error(w, "Invalid order ID", http.StatusBadRequest)
+		return
+	}
 
-	// Membuat filter untuk mencocokkan order berdasarkan slug
-	filter := bson.M{"slug": slug}
+	// Membuat filter untuk mencocokkan order berdasarkan ObjectID
+	filter := bson.M{"_id": objID}
 
 	collection := config.Mongoconn.Collection("order")
 
@@ -76,7 +103,7 @@ func Getpembayaran(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	var order model.Order
-	err := collection.FindOne(ctx, filter).Decode(&order)
+	err = collection.FindOne(ctx, filter).Decode(&order)
 	if err != nil {
 		http.Error(w, "order not found", http.StatusNotFound)
 		return
@@ -87,15 +114,19 @@ func Getpembayaran(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(order)
 }
 
-// UpdatePembayaran untuk memperbarui detail pembayaran
+// Updatepembayaran untuk memperbarui detail pembayaran dalam sebuah order
 func Updatepembayaran(w http.ResponseWriter, r *http.Request) {
-	// Mengambil slug dari query parameter
-	slug := r.URL.Query().Get("slug")
-
-	// Dekode body permintaan untuk mendapatkan detail pembayaran baru
-	var updatedpembayaran model.Payment
-	err := json.NewDecoder(r.Body).Decode(&updatedpembayaran)
+	// Mengambil ID order dari query parameter
+	orderID := r.URL.Query().Get("id")
+	objID, err := primitive.ObjectIDFromHex(orderID)
 	if err != nil {
+		http.Error(w, "Invalid order ID", http.StatusBadRequest)
+		return
+	}
+
+	// Dekode body permintaan untuk mendapatkan detail pembayaran yang diperbarui
+	var updatedpembayaran model.Payment
+	if err := json.NewDecoder(r.Body).Decode(&updatedpembayaran); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
@@ -103,9 +134,9 @@ func Updatepembayaran(w http.ResponseWriter, r *http.Request) {
 	// Set waktu pembaharuan
 	updatedpembayaran.UpdatedAt = time.Now()
 
-	// Membuat filter untuk mencocokkan order berdasarkan slug dan id pembayaran
+	// Membuat filter untuk mencocokkan order berdasarkan ObjectID dan id pembayaran
 	filter := bson.M{
-		"slug": slug,
+		"_id":            objID,
 		"pembayaran._id": updatedpembayaran.ID,
 	}
 
@@ -136,4 +167,3 @@ func Updatepembayaran(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"message": "pembayaran updated successfully"}`))
 }
-
