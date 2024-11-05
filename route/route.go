@@ -185,20 +185,31 @@ func URL(w http.ResponseWriter, r *http.Request) {
 		controller.VerifyPasswordHandler(w, r)
 	case method == "POST" && path == "/auth/resend":
 		controller.ResendPasswordHandler(w, r)
-	
+
 	// Payment
 	case method == "POST" && path == "/payment/process":
 		controller.HandlePayment(w, r)
 	// Add new payment to an order
 	case method == "POST" && path == "/payment/add":
-		controller.AddpembayaranToorder(w, r)
+		controller.AddPembayaranToOrder(w, r)
 	// Get payment details from an order
 	case method == "GET" && path == "/payment/details":
 		controller.Getpembayaran(w, r)
 	// Update payment details in an order
 	case method == "PUT" && path == "/payment/update":
 		controller.Updatepembayaran(w, r)
-	
+
+		// Payment Method
+	// Add a new payment method
+	case method == "POST" && path == "/payment/method/add":
+		controller.AddPaymentMethod(w, r)
+	// Get all payment methods
+	case method == "GET" && path == "/payment/methods":
+		controller.GetPaymentMethods(w, r)
+	// Update an existing payment method
+	case method == "PUT" && at.URLParam(path, "/payment/method/update/:id"):
+		controller.UpdatePaymentMethod(w, r)
+
 	default:
 		controller.NotFound(w, r)
 	}
