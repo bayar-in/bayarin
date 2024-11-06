@@ -186,29 +186,56 @@ func URL(w http.ResponseWriter, r *http.Request) {
 	case method == "POST" && path == "/auth/resend":
 		controller.ResendPasswordHandler(w, r)
 
-	// Payment
-	case method == "POST" && path == "/payment/process":
-		controller.HandlePayment(w, r)
-	// Add new payment to an order
-	case method == "POST" && path == "/payment/add":
-		controller.AddPembayaranToOrder(w, r)
-	// Get payment details from an order
-	case method == "GET" && path == "/payment/details":
-		controller.Getpembayaran(w, r)
-	// Update payment details in an order
-	case method == "PUT" && path == "/payment/update":
-		controller.Updatepembayaran(w, r)
+	// Transaction
+    // Create a new transaction
+    case method == "POST" && path == "/transaction/process":
+        controller.HandleTransaction(w, r)
+    // Get all transactions
+    case method == "GET" && path == "/transaction/list":
+        controller.GetTransaction(w, r)
+    // Get a specific transaction by ID
+    case method == "GET" && path == "/transaction/details":
+        controller.GetTransactionByID(w, r)
+    // Update a transaction by ID
+    case method == "PUT" && path == "/transaction/update":
+        controller.UpdateTransaction(w, r)
+    // Delete a transaction by ID
+    case method == "DELETE" && path == "/transaction/delete":
+        controller.DeleteTransaction(w, r)
 
 		// Payment Method
-	// Add a new payment method
+		// Add a new payment method
 	case method == "POST" && path == "/payment/method/add":
 		controller.AddPaymentMethod(w, r)
 	// Get all payment methods
 	case method == "GET" && path == "/payment/methods":
 		controller.GetPaymentMethods(w, r)
+	// Get a specific payment method by ID
+	case method == "GET" && at.URLParam(path, "/payment/method/:id"):
+		controller.GetPaymentMethodByID(w, r)
 	// Update an existing payment method
 	case method == "PUT" && at.URLParam(path, "/payment/method/update/:id"):
 		controller.UpdatePaymentMethod(w, r)
+	// Delete a payment method
+	case method == "DELETE" && at.URLParam(path, "/payment/method/delete/:id"):
+		controller.DeletePaymentMethod(w, r)
+
+		// Merchant
+		// Add a new merchant
+	case method == "POST" && path == "/merchant/add":
+		controller.AddMerchant(w, r)
+	// Get all merchants
+	case method == "GET" && path == "/merchants":
+		controller.GetMerchants(w, r)
+	// Get a specific merchant by ID
+	case method == "GET" && at.URLParam(path, "/merchant/:id"):
+		controller.GetMerchantByID(w, r)
+	// Update an existing merchant
+	case method == "PUT" && at.URLParam(path, "/merchant/update/:id"):
+		controller.UpdateMerchant(w, r)
+	// Delete a merchant
+	case method == "DELETE" && at.URLParam(path, "/merchant/delete/:id"):
+		controller.DeleteMerchant(w, r)
 
 	default:
 		controller.NotFound(w, r)
