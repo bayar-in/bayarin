@@ -61,34 +61,59 @@ func GetPaymentMethods(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(paymentMethods)
 }
 
-// UpdatePaymentMethod untuk memperbarui metode pembayaran yang ada
-func UpdatePaymentMethod(w http.ResponseWriter, r *http.Request) {
-	// Mengambil ID metode pembayaran dari query parameter
-	paymentMethodIDHex := r.URL.Query().Get("id")
-	paymentMethodID, err := primitive.ObjectIDFromHex(paymentMethodIDHex)
-	if err != nil {
-		http.Error(w, "Invalid payment method ID", http.StatusBadRequest)
-		return
-	}
-
-	var updatedPaymentMethod model.PaymentMethod
-	if err := json.NewDecoder(r.Body).Decode(&updatedPaymentMethod); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
-		return
-	}
-
-	// Set waktu pembaharuan
-	updatedPaymentMethod.UpdatedAt = time.Now()
-
+// GetPaymentMethodByID untuk mendapatkan metode pembayaran berdasarkan ID
+func GetPaymentMethodByID(w http.ResponseWriter, r *http.Request) {
 	collection := config.Mongoconn.Collection("payment_methods")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	_, err = collection.UpdateOne(ctx, bson.M{"_id": paymentMethodID}, bson.M{"$set": updatedPaymentMethod})
+	id := r.URL.Query().Get("id")
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+
+	var paymentMethod model.PaymentMethod
+	err = collection.FindOne(ctx, bson.M{"_id": objID}).Decode(&paymentMethod)
+	if err != nil {
+		http.Error(w, "Failed to fetch payment method", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(paymentMethod)
+}
+
+// UpdatePaymentMethod untuk mengubah data metode pembayaran
+func UpdatePaymentMethod(w http.ResponseWriter, r *http.Request) {
+	collection := config.Mongoconn.Collection("payment_methods")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	id := r.URL.Query().Get("id")
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+
+	var paymentMethod model.PaymentMethod
+	if err := json.NewDecoder(r.Body).Decode(&paymentMethod); err != nil {
+		http.Error(w, "Invalid request data", http.StatusBadRequest)
+		return
+	}
+
+	paymentMethod.UpdatedAt = time.Now()
+
+	_, err = collection.UpdateOne(ctx, bson.M{"_id": objID}, bson.M{"$set": paymentMethod})
 	if err != nil {
 		http.Error(w, "Failed to update payment method", http.StatusInternalServerError)
 		return
@@ -96,5 +121,29 @@ func UpdatePaymentMethod(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"message": "Payment method updated successfully"}`))
+	json.NewEncoder(w).Encode(paymentMethod)
+}
+
+// DeletePaymentMethod untuk menghapus metode pembayaran
+func DeletePaymentMethod(w http.ResponseWriter, r *http.Request) {
+	collection := config.Mongoconn.Collection("payment_methods")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	id := r.URL.Query().Get("id")
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+
+	_, err = collection.DeleteOne(ctx, bson.M{"_id": objID})
+	if err != nil {
+		http.Error(w, "Failed to delete payment method", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 }
