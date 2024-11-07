@@ -192,6 +192,9 @@ func URL(w http.ResponseWriter, r *http.Request) {
 		// Route Login
 	case method == "POST" && path == "/auth/log-in":
 		controller.Login(w, r)
+		// Route Get user by email
+	case method == "GET" && at.URLParam(path, "/auth/user/:email"):
+		controller.GetUserByEmail(w, r)
 
 		// Transaction
 	// Create a new transaction

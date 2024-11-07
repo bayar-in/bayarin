@@ -672,11 +672,11 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Membuat token JWT menggunakan watoken
-	token, err := watoken.EncodeforHours(user.PhoneNumber, user.Name, config.PrivateKey, 18)
+	token, err := watoken.EncodeforHours(user.PhoneNumber, user.Name, config.PRIVATEKEY, 18)
 	if err != nil {
 		var respn model.Response
 		respn.Status = "Gagal Membuat Token"
-		respn.Response = "Gagal membuat token JWT"
+		respn.Response = err.Error()
 		at.WriteJSON(w, http.StatusInternalServerError, respn)
 		return
 	}
@@ -691,6 +691,27 @@ func Login(w http.ResponseWriter, r *http.Request) {
 			"role":       user.Role,
 			"no_telepon": user.PhoneNumber,
 		},
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+// get user by email
+func GetUserByEmail(w http.ResponseWriter, r *http.Request) {
+	email := r.URL.Query().Get("email")
+	user, err := atdb.GetOneDoc[model.Userdomyikado](config.Mongoconn, "user", bson.M{"email": email})
+	if err != nil {
+		var respn model.Response
+		respn.Status = "User Not Found"
+		respn.Response = "User with email " + email + " not found"
+		at.WriteJSON(w, http.StatusNotFound, respn)
+		return
+	}
+
+	response := map[string]interface{}{
+		"message": "User found",
+		"user":    user,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
