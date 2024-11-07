@@ -546,3 +546,69 @@ func ResendPasswordHandler(respw http.ResponseWriter, r *http.Request) {
 	// Send the random password via WhatsApp
 	auth.SendWhatsAppPassword(respw, request.PhoneNumber, randomPassword)
 }
+
+func Register(w http.ResponseWriter, r *http.Request) {
+	var dataakun model.Userdomyikado
+	if err := json.NewDecoder(r.Body).Decode(&dataakun); err != nil {
+		var respn model.Response
+		respn.Status = "Invalid Request"
+		respn.Response = err.Error()
+		at.WriteJSON(w, http.StatusBadRequest, respn)
+		return
+	}
+
+	hashedPassword, err := auth.HashPassword(dataakun.Password)
+	if err != nil {
+		var respn model.Response
+		respn.Status = "Failed to hash password"
+		respn.Response = err.Error()
+		at.WriteJSON(w, http.StatusInternalServerError, respn)
+		return
+	}
+	dataakun.Password = hashedPassword
+
+	newUser:= model.Userdomyikado{
+		Name:                 dataakun.Name,
+		PhoneNumber:          dataakun.PhoneNumber,
+		Email:                dataakun.Email,
+		Password:             dataakun.Password,
+		Role:                 dataakun.Role,
+	}
+
+	// cek apakah phone number sudah terdaftar
+	_, err = atdb.GetOneDoc[model.Userdomyikado](config.Mongoconn, "user", bson.M{"phonenumber": newUser.PhoneNumber})
+	if err == nil {
+		var respn model.Response
+		respn.Status = "Phone number already registered"
+		respn.Response = "Phone number already registered"
+		at.WriteJSON(w, http.StatusConflict, respn)
+		return
+	}
+
+	// cek apakah email sudah terdaftar
+	_, err = atdb.GetOneDoc[model.Userdomyikado](config.Mongoconn, "user", bson.M{"email": newUser.Email})
+	if err == nil {
+		var respn model.Response
+		respn.Status = "Email already registered"
+		respn.Response = "Email already registered"
+		at.WriteJSON(w, http.StatusConflict, respn)
+		return
+	}
+
+	_, err = atdb.InsertOneDoc(config.Mongoconn, "user", newUser)
+	if err != nil {
+		var respn model.Response
+		respn.Status = "Failed to insert new user"
+		respn.Response = err.Error()
+		at.WriteJSON(w, http.StatusInternalServerError, respn)
+		return
+	}
+
+	response := map[string]interface{}{
+		"message": "New user created successfully",
+		"user":    newUser,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}

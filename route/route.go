@@ -186,6 +186,9 @@ func URL(w http.ResponseWriter, r *http.Request) {
 	case method == "POST" && path == "/auth/resend":
 		controller.ResendPasswordHandler(w, r)
 
+	//Register User
+	case method == "POST" && path == "/auth/register":
+		controller.Register(w, r)
 	// Transaction
     // Create a new transaction
     case method == "POST" && path == "/transaction/process":
