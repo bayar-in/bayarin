@@ -20,8 +20,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/crypto/bcrypt"
-
-	"github.com/golang-jwt/jwt/v4"
 )
 
 func RegisterGmailAuth(w http.ResponseWriter, r *http.Request) {
@@ -633,22 +631,9 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-var secretKey = []byte("your_secret_key")
-
 func CheckPasswordHash(password, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
-}
-
-func GenerateJWT(email, role string) (string, error) {
-	expirationTime := time.Now().Add(1 * time.Hour)
-	claims := jwt.MapClaims{
-		"email": email,
-		"role":  role,
-		"exp":   expirationTime.Unix(),
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(secretKey)
 }
 
 func Login(w http.ResponseWriter, r *http.Request) {
@@ -686,17 +671,17 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Membuat token JWT
-	token, err := GenerateJWT(user.Email, user.Role)
+	// Membuat token JWT menggunakan watoken
+	token, err := watoken.EncodeforHours(user.PhoneNumber, user.Name, config.PrivateKey, 18)
 	if err != nil {
 		var respn model.Response
 		respn.Status = "Gagal Membuat Token"
-		respn.Response = err.Error()
+		respn.Response = "Gagal membuat token JWT"
 		at.WriteJSON(w, http.StatusInternalServerError, respn)
 		return
 	}
 
-	// Mengirim respons login sukses dengan token
+	// Mengirim respons login sukses dengan token dan detail pengguna
 	response := map[string]interface{}{
 		"pesan": "Login berhasil",
 		"token": token,
