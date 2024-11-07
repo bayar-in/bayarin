@@ -18,6 +18,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/crypto/bcrypt"
+	"strings"
 )
 
 func RegisterGmailAuth(w http.ResponseWriter, r *http.Request) {
@@ -558,6 +559,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate role to ensure it's either "Admin" or "Pengguna"
+	role := strings.ToLower(dataakun.Role)
 	if dataakun.Role != "Admin" && dataakun.Role != "Pengguna" {
 		var respn model.Response
 		respn.Status = "Invalid Role"
@@ -565,6 +567,13 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		at.WriteJSON(w, http.StatusBadRequest, respn)
 		return
 	}
+	
+	if role == "admin" {
+		dataakun.Role = "Admin"
+	} else {
+		dataakun.Role = "Pengguna"
+	}
+
 
 	hashedPassword, err := auth.HashPassword(dataakun.Password)
 	if err != nil {
