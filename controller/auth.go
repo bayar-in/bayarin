@@ -672,7 +672,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Membuat token JWT menggunakan watoken
-	token, err := watoken.EncodeforHours(user.PhoneNumber, user.Name, config.PrivateKey, 18)
+	token, err := watoken.EncodeforHours(user.PhoneNumber, user.Name, config.PrivateKey, 43830)
 	if err != nil {
 		var respn model.Response
 		respn.Status = "Gagal Membuat Token"
