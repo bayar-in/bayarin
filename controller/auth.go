@@ -557,6 +557,15 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate role to ensure it's either "Admin" or "Pengguna"
+	if dataakun.Role != "Admin" && dataakun.Role != "Pengguna" {
+		var respn model.Response
+		respn.Status = "Invalid Role"
+		respn.Response = "Role must be either 'Admin' or 'Pengguna'"
+		at.WriteJSON(w, http.StatusBadRequest, respn)
+		return
+	}
+
 	hashedPassword, err := auth.HashPassword(dataakun.Password)
 	if err != nil {
 		var respn model.Response
@@ -567,15 +576,15 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	}
 	dataakun.Password = hashedPassword
 
-	newUser:= model.Userdomyikado{
-		Name:                 dataakun.Name,
-		PhoneNumber:          dataakun.PhoneNumber,
-		Email:                dataakun.Email,
-		Password:             dataakun.Password,
-		Role:                 dataakun.Role,
+	newUser := model.Userdomyikado{
+		Name:        dataakun.Name,
+		PhoneNumber: dataakun.PhoneNumber,
+		Email:       dataakun.Email,
+		Password:    dataakun.Password,
+		Role:        dataakun.Role,
 	}
 
-	// cek apakah phone number sudah terdaftar
+	// Check if phone number is already registered
 	_, err = atdb.GetOneDoc[model.Userdomyikado](config.Mongoconn, "user", bson.M{"phonenumber": newUser.PhoneNumber})
 	if err == nil {
 		var respn model.Response
@@ -585,7 +594,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// cek apakah email sudah terdaftar
+	// Check if email is already registered
 	_, err = atdb.GetOneDoc[model.Userdomyikado](config.Mongoconn, "user", bson.M{"email": newUser.Email})
 	if err == nil {
 		var respn model.Response
