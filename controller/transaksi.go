@@ -23,7 +23,7 @@ func HandleTransaction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Ambil user ID dari konteks (misal dari token)
-	// Di sini asumsi ada fungsi `GetUserIDFromContext` untuk mendapatkan user ID dari konteks login
+	// Pastikan ada fungsi `GetUserIDFromContext` untuk mengambil user ID dari konteks permintaan
 	userID, err := GetUserIDFromContext(r)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -31,9 +31,10 @@ func HandleTransaction(w http.ResponseWriter, r *http.Request) {
 	}
 	transaction.UserID = userID
 
-	// Validasi merchant menggunakan nama merchant
-	merchantName := transaction.Description // atau ganti dengan field JSON lain yang berisi nama merchant
+	// Ambil nama merchant dari field `Description` atau field lain yang diberikan dalam JSON
+	merchantName := transaction.Description // Misalkan `Description` berisi nama merchant
 
+	// Cari merchant berdasarkan nama merchant di koleksi "merchants"
 	merchantCollection := config.Mongoconn.Collection("merchants")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -45,27 +46,28 @@ func HandleTransaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set `MerchantID` di transaksi berdasarkan hasil pencarian merchant
+	// Set `MerchantID` di transaksi berdasarkan ID merchant yang ditemukan
 	transaction.MerchantID = merchant.ID
 
-	// Set ID dan waktu transaksi
+	// Set ID transaksi dan waktu pembuatan/pembaruan
 	transaction.ID = primitive.NewObjectID()
 	transaction.CreatedAt = time.Now()
 	transaction.UpdatedAt = time.Now()
 
-	// Simpan transaksi ke MongoDB
-	collection := config.Mongoconn.Collection("transaction")
-	_, err = collection.InsertOne(ctx, transaction)
+	// Simpan transaksi ke MongoDB di koleksi "transaction"
+	transactionCollection := config.Mongoconn.Collection("transaction")
+	_, err = transactionCollection.InsertOne(ctx, transaction)
 	if err != nil {
 		http.Error(w, "Failed to add transaction", http.StatusInternalServerError)
 		return
 	}
 
-	// Kembalikan respons sukses
+	// Kirim respons sukses
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(transaction)
 }
+
 
 
 // GetTransaction
