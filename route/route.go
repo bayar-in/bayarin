@@ -211,21 +211,7 @@ func URL(w http.ResponseWriter, r *http.Request) {
 		controller.DeleteTransaction(w, r)
 
 		// Payment Method
-		// Add a new payment method
-	case method == "POST" && path == "/payment/method/add":
-		controller.AddPaymentMethod(w, r)
-	// Get all payment methods
-	case method == "GET" && path == "/payment/methods":
-		controller.GetPaymentMethods(w, r)
-	// Get a specific payment method by ID
-	case method == "GET" && at.URLParam(path, "/payment/method/:id"):
-		controller.GetPaymentMethodByID(w, r)
-	// Update an existing payment method
-	case method == "PUT" && at.URLParam(path, "/payment/method/update/:id"):
-		controller.UpdatePaymentMethod(w, r)
-	// Delete a payment method
-	case method == "DELETE" && at.URLParam(path, "/payment/method/delete/:id"):
-		controller.DeletePaymentMethod(w, r)
+		
 
 		// Merchant
 		// Add a new merchant
