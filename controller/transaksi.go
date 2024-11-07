@@ -3,21 +3,33 @@ package controller
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/gocroot/config"
-	"github.com/gocroot/helper/gcallapi"
 	"github.com/gocroot/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"net/http"
-	"time"
 )
 
+// HandleTransaction untuk menangani transaksi
 // HandleTransaction untuk menangani transaksi
 func HandleTransaction(w http.ResponseWriter, r *http.Request) {
 	var transaction model.Transaction
 	if err := json.NewDecoder(r.Body).Decode(&transaction); err != nil {
 		http.Error(w, "Invalid request data", http.StatusBadRequest)
+		return
+	}
+
+	// Validasi merchant_id
+	merchantCollection := config.Mongoconn.Collection("merchants")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var merchant model.Merchant
+	err := merchantCollection.FindOne(ctx, bson.M{"_id": transaction.MerchantID}).Decode(&merchant)
+	if err != nil {
+		http.Error(w, "Merchant not found", http.StatusBadRequest)
 		return
 	}
 
@@ -28,32 +40,10 @@ func HandleTransaction(w http.ResponseWriter, r *http.Request) {
 
 	// Simpan transaksi ke MongoDB
 	collection := config.Mongoconn.Collection("transaction")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	_, err := collection.InsertOne(ctx, transaction)
+	_, err = collection.InsertOne(ctx, transaction)
 	if err != nil {
 		http.Error(w, "Failed to add transaction", http.StatusInternalServerError)
 		return
-	}
-
-	// Kirim email pemberitahuan setelah transaksi berhasil
-	subject := "Transaksi Berhasil"
-	body := fmt.Sprintf("Hello, transaksi dengan ID %s sebesar Rp%.2f telah berhasil diproses pada %s. Terima kasih telah bertransaksi dengan kami.",
-		transaction.ID.Hex(), transaction.Amount, transaction.CreatedAt.Format("2006-01-02 15:04:05"))
-
-	// Pastikan email pengguna sudah ada dalam transaksi
-	var user model.Userdomyikado
-	err = collection.FindOne(ctx, bson.M{"_id": transaction.UserID}).Decode(&user)
-	if err != nil {
-		http.Error(w, "Failed to find user", http.StatusInternalServerError)
-		return
-	}
-
-	err = gcallapi.SendEmail(config.Mongoconn, user.Email, subject, body)
-	if err != nil {
-		// Log error jika email gagal dikirim, tapi tetap kirim respons sukses ke pengguna
-		fmt.Printf("Error sending email: %v\n", err)
 	}
 
 	// Kembalikan respons sukses

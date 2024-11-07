@@ -6,10 +6,10 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// merchant struct
+// merchant struct// merchant struct
 type Merchant struct {
 	ID          primitive.ObjectID `json:"merchant_id,omitempty" bson:"_id,omitempty"`
-	Name        string             `json:"name_merchant,omitempty" bson:"name,omitempty"`
+	Name        string             `json:"name_merchant,omitempty" bson:"name_merchant,omitempty"`
 	Email       string             `json:"email,omitempty" bson:"email,omitempty"`
 	Phone       string             `json:"phone,omitempty" bson:"phone,omitempty"`
 	Description string             `json:"description,omitempty" bson:"description,omitempty"`
