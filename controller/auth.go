@@ -734,6 +734,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			http.Error(w, "Missing token", http.StatusUnauthorized)
 			return
 		}
+		tokenString = strings.TrimPrefix(tokenString, "Bearer ")
 
 		// Decode token menggunakan fungsi Decode
 		var payload watoken.Payload[any] // Sesuaikan tipe payload sesuai kebutuhan
