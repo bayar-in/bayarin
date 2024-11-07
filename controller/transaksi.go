@@ -13,25 +13,40 @@ import (
 )
 
 // HandleTransaction untuk menangani transaksi
-// HandleTransaction untuk menangani transaksi
 func HandleTransaction(w http.ResponseWriter, r *http.Request) {
 	var transaction model.Transaction
+
+	// Dekode permintaan JSON
 	if err := json.NewDecoder(r.Body).Decode(&transaction); err != nil {
 		http.Error(w, "Invalid request data", http.StatusBadRequest)
 		return
 	}
 
-	// Validasi merchant_id
+	// Ambil user ID dari konteks (misal dari token)
+	// Di sini asumsi ada fungsi `GetUserIDFromContext` untuk mendapatkan user ID dari konteks login
+	userID, err := GetUserIDFromContext(r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	transaction.UserID = userID
+
+	// Validasi merchant menggunakan nama merchant
+	merchantName := transaction.Description // atau ganti dengan field JSON lain yang berisi nama merchant
+
 	merchantCollection := config.Mongoconn.Collection("merchants")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	var merchant model.Merchant
-	err := merchantCollection.FindOne(ctx, bson.M{"_id": transaction.MerchantID}).Decode(&merchant)
+	err = merchantCollection.FindOne(ctx, bson.M{"name": merchantName}).Decode(&merchant)
 	if err != nil {
 		http.Error(w, "Merchant not found", http.StatusBadRequest)
 		return
 	}
+
+	// Set `MerchantID` di transaksi berdasarkan hasil pencarian merchant
+	transaction.MerchantID = merchant.ID
 
 	// Set ID dan waktu transaksi
 	transaction.ID = primitive.NewObjectID()
@@ -51,6 +66,7 @@ func HandleTransaction(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(transaction)
 }
+
 
 // GetTransaction
 func GetTransaction(w http.ResponseWriter, r *http.Request) {

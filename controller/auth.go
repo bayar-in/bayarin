@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -17,6 +18,7 @@ import (
 	"github.com/gocroot/helper/watoken"
 	"github.com/gocroot/model"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/crypto/bcrypt"
@@ -716,4 +718,57 @@ func GetUserByEmail(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
+}
+
+// Define a custom type for context keys
+type contextKey string
+
+const userIDKey contextKey = "userID"
+
+// Middleware Autentikasi (Contoh untuk Menyimpan UserID ke dalam Konteks)
+func AuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Ambil token dari header Authorization
+		tokenString := r.Header.Get("Authorization")
+		if tokenString == "" {
+			http.Error(w, "Missing token", http.StatusUnauthorized)
+			return
+		}
+
+		// Decode token menggunakan fungsi Decode
+		var payload watoken.Payload[any] // Sesuaikan tipe payload sesuai kebutuhan
+		payload, err := watoken.Decode(config.PRIVATEKEY, tokenString)
+		if err != nil {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		// Asumsi: Payload memiliki field 'Subject' yang menyimpan Phone Number
+		phoneNumber, ok := payload.Data.(string)
+		if !ok {
+			http.Error(w, "Invalid token payload", http.StatusUnauthorized)
+			return
+		}
+
+		// Cari pengguna di database berdasarkan Phone Number
+		var user model.Userdomyikado
+		user, err = atdb.GetOneDoc[model.Userdomyikado](config.Mongoconn, "user", bson.M{"phonenumber": phoneNumber})
+		if err != nil {
+			http.Error(w, "User not found", http.StatusUnauthorized)
+			return
+		}
+
+		// Masukkan UserID ke dalam konteks permintaan
+		ctx := context.WithValue(r.Context(), userIDKey, user.ID)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// Fungsi untuk Mendapatkan UserID dari Konteks
+func GetUserIDFromContext(r *http.Request) (primitive.ObjectID, error) {
+	userID, ok := r.Context().Value(userIDKey).(primitive.ObjectID)
+	if !ok {
+		return primitive.NilObjectID, fmt.Errorf("user ID not found in context")
+	}
+	return userID, nil
 }
