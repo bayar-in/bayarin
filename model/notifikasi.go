@@ -9,7 +9,7 @@ import (
 // Notifikasi struct
 type Notifikasi struct {
 	ID            primitive.ObjectID `json:"notifikasi_id,omitempty" bson:"_id,omitempty"`
-	UserID        primitive.ObjectID `json:"user_id,omitempty" bson:"user_id,omitempty"`
+	UserID        primitive.ObjectID `json:"_id,omitempty" bson:"user_id,omitempty"`
 	TransactionID primitive.ObjectID `json:"transaction_id,omitempty" bson:"transaction_id,omitempty"`
 	Email         string             `json:"email,omitempty" bson:"email,omitempty"`
 	Message       string             `json:"message,omitempty" bson:"message,omitempty"`
