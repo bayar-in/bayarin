@@ -189,22 +189,26 @@ func URL(w http.ResponseWriter, r *http.Request) {
 	//Register User
 	case method == "POST" && path == "/auth/register":
 		controller.Register(w, r)
-	// Transaction
-    // Create a new transaction
-    case method == "POST" && path == "/transaction/process":
-        controller.HandleTransaction(w, r)
-    // Get all transactions
-    case method == "GET" && path == "/transaction/list":
-        controller.GetTransaction(w, r)
-    // Get a specific transaction by ID
-    case method == "GET" && path == "/transaction/details":
-        controller.GetTransactionByID(w, r)
-    // Update a transaction by ID
-    case method == "PUT" && path == "/transaction/update":
-        controller.UpdateTransaction(w, r)
-    // Delete a transaction by ID
-    case method == "DELETE" && path == "/transaction/delete":
-        controller.DeleteTransaction(w, r)
+		// Route Login
+	case method == "POST" && path == "/auth/log-in":
+		controller.Login(w, r)
+
+		// Transaction
+	// Create a new transaction
+	case method == "POST" && path == "/transaction/process":
+		controller.HandleTransaction(w, r)
+	// Get all transactions
+	case method == "GET" && path == "/transaction/list":
+		controller.GetTransaction(w, r)
+	// Get a specific transaction by ID
+	case method == "GET" && path == "/transaction/details":
+		controller.GetTransactionByID(w, r)
+	// Update a transaction by ID
+	case method == "PUT" && path == "/transaction/update":
+		controller.UpdateTransaction(w, r)
+	// Delete a transaction by ID
+	case method == "DELETE" && path == "/transaction/delete":
+		controller.DeleteTransaction(w, r)
 
 		// Payment Method
 		// Add a new payment method

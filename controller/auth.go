@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"time"
 
+	"strings"
+
 	"github.com/gocroot/config"
 	"github.com/gocroot/helper/at"
 	"github.com/gocroot/helper/atdb"
@@ -18,7 +20,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/crypto/bcrypt"
-	"strings"
+
+	"github.com/golang-jwt/jwt/v4"
 )
 
 func RegisterGmailAuth(w http.ResponseWriter, r *http.Request) {
@@ -567,13 +570,12 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		at.WriteJSON(w, http.StatusBadRequest, respn)
 		return
 	}
-	
+
 	if role == "admin" {
 		dataakun.Role = "Admin"
 	} else {
 		dataakun.Role = "Pengguna"
 	}
-
 
 	hashedPassword, err := auth.HashPassword(dataakun.Password)
 	if err != nil {
@@ -625,6 +627,85 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	response := map[string]interface{}{
 		"message": "New user created successfully",
 		"user":    newUser,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+var secretKey = []byte("your_secret_key")
+
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
+}
+
+func GenerateJWT(email, role string) (string, error) {
+	expirationTime := time.Now().Add(1 * time.Hour)
+	claims := jwt.MapClaims{
+		"email": email,
+		"role":  role,
+		"exp":   expirationTime.Unix(),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(secretKey)
+}
+
+func Login(w http.ResponseWriter, r *http.Request) {
+	var kredensial struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	// Memeriksa dan menguraikan JSON dari body permintaan
+	if err := json.NewDecoder(r.Body).Decode(&kredensial); err != nil {
+		var respn model.Response
+		respn.Status = "Permintaan Tidak Valid"
+		respn.Response = "Gagal memproses body permintaan"
+		at.WriteJSON(w, http.StatusBadRequest, respn)
+		return
+	}
+
+	// Mencari pengguna berdasarkan email
+	var user model.Userdomyikado
+	user, err := atdb.GetOneDoc[model.Userdomyikado](config.Mongoconn, "user", bson.M{"email": kredensial.Email})
+	if err != nil {
+		var respn model.Response
+		respn.Status = "Login Gagal"
+		respn.Response = "Email atau password tidak valid"
+		at.WriteJSON(w, http.StatusUnauthorized, respn)
+		return
+	}
+
+	// Memverifikasi password
+	if !CheckPasswordHash(kredensial.Password, user.Password) {
+		var respn model.Response
+		respn.Status = "Login Gagal"
+		respn.Response = "Email atau password tidak valid"
+		at.WriteJSON(w, http.StatusUnauthorized, respn)
+		return
+	}
+
+	// Membuat token JWT
+	token, err := GenerateJWT(user.Email, user.Role)
+	if err != nil {
+		var respn model.Response
+		respn.Status = "Gagal Membuat Token"
+		respn.Response = err.Error()
+		at.WriteJSON(w, http.StatusInternalServerError, respn)
+		return
+	}
+
+	// Mengirim respons login sukses dengan token
+	response := map[string]interface{}{
+		"pesan": "Login berhasil",
+		"token": token,
+		"pengguna": map[string]string{
+			"nama":       user.Name,
+			"email":      user.Email,
+			"role":       user.Role,
+			"no_telepon": user.PhoneNumber,
+		},
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
