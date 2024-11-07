@@ -731,23 +731,31 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		// Ambil token dari header Authorization
 		tokenString := r.Header.Get("Authorization")
 		if tokenString == "" {
-			http.Error(w, "Missing token", http.StatusUnauthorized)
+			http.Error(w, "Token tidak ditemukan", http.StatusUnauthorized)
 			return
 		}
+		
+		// Periksa apakah token memiliki prefix "Bearer "
+		if !strings.HasPrefix(tokenString, "Bearer ") {
+			http.Error(w, "Format token tidak valid", http.StatusUnauthorized)
+			return
+		}
+		
+		// Hilangkan prefix "Bearer "
 		tokenString = strings.TrimPrefix(tokenString, "Bearer ")
 
 		// Decode token menggunakan fungsi Decode
 		var payload watoken.Payload[any] // Sesuaikan tipe payload sesuai kebutuhan
 		payload, err := watoken.Decode(config.PRIVATEKEY, tokenString)
 		if err != nil {
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			http.Error(w, "Token tidak valid", http.StatusUnauthorized)
 			return
 		}
 
-		// Asumsi: Payload memiliki field 'Subject' yang menyimpan Phone Number
+		// Ambil nomor telepon dari payload dan periksa apakah tipe datanya sesuai
 		phoneNumber, ok := payload.Data.(string)
-		if !ok {
-			http.Error(w, "Invalid token payload", http.StatusUnauthorized)
+		if !ok || phoneNumber == "" {
+			http.Error(w, "Payload token tidak valid", http.StatusUnauthorized)
 			return
 		}
 
@@ -755,7 +763,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		var user model.Userdomyikado
 		user, err = atdb.GetOneDoc[model.Userdomyikado](config.Mongoconn, "user", bson.M{"phonenumber": phoneNumber})
 		if err != nil {
-			http.Error(w, "User not found", http.StatusUnauthorized)
+			http.Error(w, "Pengguna tidak ditemukan", http.StatusUnauthorized)
 			return
 		}
 
@@ -769,7 +777,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 func GetUserIDFromContext(r *http.Request) (primitive.ObjectID, error) {
 	userID, ok := r.Context().Value(userIDKey).(primitive.ObjectID)
 	if !ok {
-		return primitive.NilObjectID, fmt.Errorf("user ID not found in context")
+		return primitive.NilObjectID, fmt.Errorf("user ID tidak ditemukan di konteks")
 	}
 	return userID, nil
 }
