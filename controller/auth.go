@@ -680,7 +680,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		at.WriteJSON(w, http.StatusInternalServerError, respn)
 		return
 	}
-	
+
 	// Mengirim respons login sukses dengan token dan detail pengguna
 	response := map[string]interface{}{
 		"pesan": "Login berhasil",
@@ -691,6 +691,27 @@ func Login(w http.ResponseWriter, r *http.Request) {
 			"role":       user.Role,
 			"no_telepon": user.PhoneNumber,
 		},
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+// get user by email
+func GetUserByEmail(w http.ResponseWriter, r *http.Request) {
+	email := r.URL.Query().Get("email")
+	user, err := atdb.GetOneDoc[model.Userdomyikado](config.Mongoconn, "user", bson.M{"email": email})
+	if err != nil {
+		var respn model.Response
+		respn.Status = "User Not Found"
+		respn.Response = "User with email " + email + " not found"
+		at.WriteJSON(w, http.StatusNotFound, respn)
+		return
+	}
+
+	response := map[string]interface{}{
+		"message": "User found",
+		"user":    user,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
