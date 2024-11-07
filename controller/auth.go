@@ -675,7 +675,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	token, err := watoken.EncodeforHours(user.PhoneNumber, user.Name, config.PrivateKey, 18)
 	if err != nil {
 		var respn model.Response
-		respn.Status = "Gagal Membuat Token"
+		respn.Status = "Gagal Membuat Token" + "Data Nomor Hp" + user.PhoneNumber + "Data Nama" + user.Name + "Data Private Key" + config.PrivateKey
 		respn.Response = err.Error()
 		at.WriteJSON(w, http.StatusInternalServerError, respn)
 		return
