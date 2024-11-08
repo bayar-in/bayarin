@@ -13,58 +13,44 @@ import (
 )
 
 // HandleTransaction untuk menangani transaksi
+// HandleTransaction untuk menangani transaksi
 func HandleTransaction(w http.ResponseWriter, r *http.Request) {
 	var transaction model.Transaction
-
-	// Dekode permintaan JSON
 	if err := json.NewDecoder(r.Body).Decode(&transaction); err != nil {
 		http.Error(w, "Invalid request data", http.StatusBadRequest)
 		return
 	}
 
-	// Ambil user ID dari konteks (misal dari token)
-	// Pastikan ada fungsi `GetUserIDFromContext` untuk mengambil user ID dari konteks permintaan
-	userID, err := GetUserIDFromContext(r)
-	transaction.UserID = userID
-
-	// Ambil nama merchant dari field `Description` atau field lain yang diberikan dalam JSON
-	merchantName := transaction.Description // Misalkan `Description` berisi nama merchant
-
-	// Cari merchant berdasarkan nama merchant di koleksi "merchants"
+	// Validasi merchant_id
 	merchantCollection := config.Mongoconn.Collection("merchants")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	var merchant model.Merchant
-	err = merchantCollection.FindOne(ctx, bson.M{"name": merchantName}).Decode(&merchant)
+	err := merchantCollection.FindOne(ctx, bson.M{"_id": transaction.MerchantID}).Decode(&merchant)
 	if err != nil {
 		http.Error(w, "Merchant not found", http.StatusBadRequest)
 		return
 	}
 
-	// Set `MerchantID` di transaksi berdasarkan ID merchant yang ditemukan
-	transaction.MerchantID = merchant.ID
-
-	// Set ID transaksi dan waktu pembuatan/pembaruan
+	// Set ID dan waktu transaksi
 	transaction.ID = primitive.NewObjectID()
 	transaction.CreatedAt = time.Now()
 	transaction.UpdatedAt = time.Now()
 
-	// Simpan transaksi ke MongoDB di koleksi "transaction"
-	transactionCollection := config.Mongoconn.Collection("transaction")
-	_, err = transactionCollection.InsertOne(ctx, transaction)
+	// Simpan transaksi ke MongoDB
+	collection := config.Mongoconn.Collection("transaction")
+	_, err = collection.InsertOne(ctx, transaction)
 	if err != nil {
 		http.Error(w, "Failed to add transaction", http.StatusInternalServerError)
 		return
 	}
 
-	// Kirim respons sukses
+	// Kembalikan respons sukses
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(transaction)
 }
-
-
 
 // GetTransaction
 func GetTransaction(w http.ResponseWriter, r *http.Request) {
