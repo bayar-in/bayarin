@@ -25,10 +25,6 @@ func HandleTransaction(w http.ResponseWriter, r *http.Request) {
 	// Ambil user ID dari konteks (misal dari token)
 	// Pastikan ada fungsi `GetUserIDFromContext` untuk mengambil user ID dari konteks permintaan
 	userID, err := GetUserIDFromContext(r)
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
 	transaction.UserID = userID
 
 	// Ambil nama merchant dari field `Description` atau field lain yang diberikan dalam JSON
