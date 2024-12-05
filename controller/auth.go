@@ -561,21 +561,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate role to ensure it's either "Admin" or "Pengguna"
-	role := strings.ToLower(dataakun.Role)
-	if dataakun.Role != "Admin" && dataakun.Role != "Pengguna" {
-		var respn model.Response
-		respn.Status = "Invalid Role"
-		respn.Response = "Role must be either 'Admin' or 'Pengguna'"
-		at.WriteJSON(w, http.StatusBadRequest, respn)
-		return
-	}
-
-	if role == "admin" {
-		dataakun.Role = "Admin"
-	} else {
-		dataakun.Role = "Pengguna"
-	}
+	dataakun.Role = "Pengguna"
 
 	hashedPassword, err := auth.HashPassword(dataakun.Password)
 	if err != nil {
