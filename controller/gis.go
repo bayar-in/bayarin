@@ -34,7 +34,28 @@ func GetRegion(respw http.ResponseWriter, req *http.Request) {
 		at.WriteJSON(respw, http.StatusNotFound, region)
 		return
 	}
-	at.WriteJSON(respw, http.StatusOK, region)
+
+	geoJSON := bson.M{
+		"type": "FeatureCollection",
+		"features": []bson.M{
+			{
+				"type": "Feature",
+				"geometry": bson.M{
+					"type":        region.Border.Type,
+					"coordinates": region.Border.Coordinates,
+				},
+				"properties": bson.M{
+					"province":     region.Province,
+					"district":     region.District,
+					"sub_district": region.SubDistrict,
+					"village":      region.Village,
+				},
+			},
+		},
+	}
+
+	// Kirim respon dalam format GeoJSON
+	at.WriteJSON(respw, http.StatusOK, geoJSON)
 }
 
 func GetRoads(respw http.ResponseWriter, req *http.Request) {
