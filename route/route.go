@@ -233,6 +233,13 @@ func URL(w http.ResponseWriter, r *http.Request) {
 	case method == "DELETE" && at.URLParam(path, "/merchant/delete/:id"):
 		controller.DeleteMerchant(w, r)
 
+
+	case method == "POST" && path == "/data/get/roads":
+		controller.GetRoads(w, r)
+	case method == "POST" && path == "/data/get/region":
+		controller.GetRegion(w, r)
+
+
 	default:
 		controller.NotFound(w, r)
 	}
