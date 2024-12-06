@@ -593,7 +593,7 @@ func Register(respw http.ResponseWriter, r *http.Request) {
 		Email:         request.Email,
 		Team:          "pd.my.id",
 		Scope:         "dev",
-		LinkedDevice:  "v4.public.eyJhbGlhcyI6IlJvbGx5IE1hdWxhbmEgQXdhbmdnYSIsImV4cCI6IjIwMjktMDgtMDlUMTQ6MzQ6MjlaIiwiaWF0IjoiMjAyNC0wOC0wOVQwODozNDoyOVoiLCJpZCI6IjYyODEzMTIwMDAzMDAiLCJuYmYiOiIyMDI0LTA4LTA5VDA4OjM0OjI5WiJ9FXnQi5vnQ7YXHteepJ14Xcc-wPc0PLQ0n4LSbGFijfdkStVeD6QIDuwQGeaq7xETWmmtFXjfkmmfDG0WHmAlBA",
+		LinkedDevice:  "v4.public.eyJhbGlhcyI6Ikthc3l6emFtIiwiZXhwIjoiMjAyNC0xMi0yMVQxODo0NDowNFoiLCJpYXQiOiIyMDI0LTExLTIxVDE4OjQ0OjA0WiIsImlkIjoiNjI4ODEwMjI1MjI5MjAiLCJuYmYiOiIyMDI0LTExLTIxVDE4OjQ0OjA0WiJ927A7IJ0qMDlbFieIdpv-cQY36iEPEpc3tF5SKH7uJuMQzYZVCCwIBO51f42zCqBssn6AVrV5kGOghkdXnuqrBg",
 		JumlahAntrian: 7,
 		Password:      hashedPassword,
 		Role:          role,
