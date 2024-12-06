@@ -47,11 +47,12 @@ func GetDataUserFromApi(respw http.ResponseWriter, req *http.Request) {
 func GetDataUser(respw http.ResponseWriter, req *http.Request) {
 	payload, err := watoken.Decode(config.PublicKeyWhatsAuth, at.GetLoginFromHeader(req))
 	if err != nil {
-		at.WriteJSON(respw, http.StatusForbidden, model.Response{
-			Status:   "Error: Token Tidak Valid",
-			Location: "Decode Token Error",
-			Response: err.Error(),
-		})
+		var respn model.Response
+		respn.Status = "Error : Token Tidak Valid "
+		respn.Info = config.PublicKeyWhatsAuth
+		respn.Location = "Decode Token Error: " + at.GetLoginFromHeader(req)
+		respn.Response = err.Error()
+		at.WriteJSON(respw, http.StatusForbidden, respn)
 		return
 	}
 	docuser, err := atdb.GetOneDoc[model.Userdomyikado](config.Mongoconn, "user", primitive.M{"phonenumber": payload.Id})
