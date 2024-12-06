@@ -551,138 +551,131 @@ func ResendPasswordHandler(respw http.ResponseWriter, r *http.Request) {
 	auth.SendWhatsAppPassword(respw, request.PhoneNumber, randomPassword)
 }
 
-func Register(w http.ResponseWriter, r *http.Request) {
-	var dataakun model.Userdomyikado
-	if err := json.NewDecoder(r.Body).Decode(&dataakun); err != nil {
-		var respn model.Response
-		respn.Status = "Invalid Request"
-		respn.Response = err.Error()
-		at.WriteJSON(w, http.StatusBadRequest, respn)
+func Register(respw http.ResponseWriter, r *http.Request) {
+	var request model.Userdomyikado
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		respn := model.Response{
+			Status:   "Invalid Request",
+			Response: err.Error(),
+		}
+		at.WriteJSON(respw, http.StatusBadRequest, respn)
 		return
 	}
 
-	dataakun.Role = "Pengguna"
+	re := regexp.MustCompile(`^62\d{9,15}$`)
+	if !re.MatchString(request.PhoneNumber) {
+		respn := model.Response{
+			Status:   "Bad Request",
+			Response: "Invalid phone number format",
+		}
+		at.WriteJSON(respw, http.StatusBadRequest, respn)
+		return
+	}
 
-	hashedPassword, err := auth.HashPassword(dataakun.Password)
+	hashedPassword, err := auth.HashPassword(request.Password)
 	if err != nil {
-		var respn model.Response
-		respn.Status = "Failed to hash password"
-		respn.Response = err.Error()
-		at.WriteJSON(w, http.StatusInternalServerError, respn)
+		respn := model.Response{
+			Status:   "Failed to hash password",
+			Response: err.Error(),
+		}
+		at.WriteJSON(respw, http.StatusInternalServerError, respn)
 		return
 	}
-	dataakun.Password = hashedPassword
+
+	role := request.Role
+	if role == "" {
+		role = "user"
+	}
 
 	newUser := model.Userdomyikado{
-		Name:        dataakun.Name,
-		PhoneNumber: dataakun.PhoneNumber,
-		Email:       dataakun.Email,
-		Password:    dataakun.Password,
-		Role:        dataakun.Role,
-	}
-
-	// Check if phone number is already registered
-	_, err = atdb.GetOneDoc[model.Userdomyikado](config.Mongoconn, "user", bson.M{"phonenumber": newUser.PhoneNumber})
-	if err == nil {
-		var respn model.Response
-		respn.Status = "Phone number already registered"
-		respn.Response = "Phone number already registered"
-		at.WriteJSON(w, http.StatusConflict, respn)
-		return
-	}
-
-	// Check if email is already registered
-	_, err = atdb.GetOneDoc[model.Userdomyikado](config.Mongoconn, "user", bson.M{"email": newUser.Email})
-	if err == nil {
-		var respn model.Response
-		respn.Status = "Email already registered"
-		respn.Response = "Email already registered"
-		at.WriteJSON(w, http.StatusConflict, respn)
-		return
+		Name:          request.Name,
+		PhoneNumber:   request.PhoneNumber,
+		Email:         request.Email,
+		Team:          "pd.my.id",
+		Scope:         "dev",
+		LinkedDevice:  "v4.public.eyJhbGlhcyI6IlJvbGx5IE1hdWxhbmEgQXdhbmdnYSIsImV4cCI6IjIwMjktMDgtMDlUMTQ6MzQ6MjlaIiwiaWF0IjoiMjAyNC0wOC0wOVQwODozNDoyOVoiLCJpZCI6IjYyODEzMTIwMDAzMDAiLCJuYmYiOiIyMDI0LTA4LTA5VDA4OjM0OjI5WiJ9FXnQi5vnQ7YXHteepJ14Xcc-wPc0PLQ0n4LSbGFijfdkStVeD6QIDuwQGeaq7xETWmmtFXjfkmmfDG0WHmAlBA",
+		JumlahAntrian: 7,
+		Password:      hashedPassword,
+		Role:          role,
 	}
 
 	_, err = atdb.InsertOneDoc(config.Mongoconn, "user", newUser)
 	if err != nil {
-		var respn model.Response
-		respn.Status = "Failed to insert new user"
-		respn.Response = err.Error()
-		at.WriteJSON(w, http.StatusInternalServerError, respn)
+		respn := model.Response{
+			Status:   "Failed to insert new user",
+			Response: err.Error(),
+		}
+
+		at.WriteJSON(respw, http.StatusInternalServerError, respn)
 		return
 	}
 
 	response := map[string]interface{}{
-		"message": "New user created successfully",
-		"user":    newUser,
+		"message":       "New user created successfully",
+		"name":          newUser.Name,
+		"phonenumber":   newUser.PhoneNumber,
+		"email":         newUser.Email,
+		"team":          newUser.Team,
+		"scope":         newUser.Scope,
+		"jumlahAntrian": newUser.JumlahAntrian,
+		"role":          newUser.Role,
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+
+	at.WriteJSON(respw, http.StatusOK, response)
 }
 
-func CheckPasswordHash(password, hash string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-	return err == nil
-}
+func Login(respw http.ResponseWriter, r *http.Request) {
+	var userRequest model.Userdomyikado
 
-func Login(w http.ResponseWriter, r *http.Request) {
-	var kredensial struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
-
-	// Memeriksa dan menguraikan JSON dari body permintaan
-	if err := json.NewDecoder(r.Body).Decode(&kredensial); err != nil {
-		var respn model.Response
-		respn.Status = "Permintaan Tidak Valid"
-		respn.Response = "Gagal memproses body permintaan"
-		at.WriteJSON(w, http.StatusBadRequest, respn)
+	if err := json.NewDecoder(r.Body).Decode(&userRequest); err != nil {
+		response := model.Response{
+			Status:   "Invalid Request",
+			Response: err.Error(),
+		}
+		at.WriteJSON(respw, http.StatusBadRequest, response)
 		return
 	}
 
-	// Mencari pengguna berdasarkan email
-	var user model.Userdomyikado
-	user, err := atdb.GetOneDoc[model.Userdomyikado](config.Mongoconn, "user", bson.M{"email": kredensial.Email})
+	var storedUser model.Userdomyikado
+	err := config.Mongoconn.Collection("user").FindOne(context.Background(), bson.M{"email": userRequest.Email}).Decode(&storedUser)
+	if err != nil {
+		response := model.Response{
+			Status:   "Error: Toko tidak ditemukan",
+			Response: "Error: " + err.Error(),
+		}
+		at.WriteJSON(respw, http.StatusNotFound, response)
+		return
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(storedUser.Password), []byte(userRequest.Password))
+	if err != nil {
+		response := model.Response{
+			Status:   "Failed to verify password",
+			Response: "Invalid password",
+		}
+		at.WriteJSON(respw, http.StatusUnauthorized, response)
+		return
+	}
+
+	encryptedToken, err := watoken.EncodeforHours(storedUser.PhoneNumber, storedUser.Name, config.PRIVATEKEY, 18)
 	if err != nil {
 		var respn model.Response
-		respn.Status = "Login Gagal"
-		respn.Response = "Email atau password tidak valid"
-		at.WriteJSON(w, http.StatusUnauthorized, respn)
+		respn.Status = "Error: token gagal generate"
+		respn.Response = ", Error: " + err.Error()
+		at.WriteJSON(respw, http.StatusNotFound, respn)
 		return
 	}
-
-	// Memverifikasi password
-	if !CheckPasswordHash(kredensial.Password, user.Password) {
-		var respn model.Response
-		respn.Status = "Login Gagal"
-		respn.Response = "Email atau password tidak valid"
-		at.WriteJSON(w, http.StatusUnauthorized, respn)
-		return
-	}
-
-	// Membuat token JWT menggunakan watoken
-	token, err := watoken.EncodeforHours(user.PhoneNumber, user.Name, config.PRIVATEKEY, 18)
-	if err != nil {
-		var respn model.Response
-		respn.Status = "Gagal Membuat Token"
-		respn.Response = err.Error()
-		at.WriteJSON(w, http.StatusInternalServerError, respn)
-		return
-	}
-
-	// Mengirim respons login sukses dengan token dan detail pengguna
 	response := map[string]interface{}{
-		"pesan": "Login berhasil",
-		"token": token,
-		"pengguna": map[string]string{
-			"nama":       user.Name,
-			"email":      user.Email,
-			"role":       user.Role,
-			"no_telepon": user.PhoneNumber,
-		},
+		"message": "Login successful",
+		"name":    storedUser.Name,
+		"email":   storedUser.Email,
+		"phone":   storedUser.PhoneNumber,
+		"team":    storedUser.Team,
+		"scope":   storedUser.Scope,
+		"token":   encryptedToken,
+		"antrian": storedUser.JumlahAntrian,
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+
+	at.WriteJSON(respw, http.StatusOK, response)
 }
 
 // get user by email
@@ -720,13 +713,13 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			http.Error(w, "Token tidak ditemukan", http.StatusUnauthorized)
 			return
 		}
-		
+
 		// Periksa apakah token memiliki prefix "Bearer "
 		if !strings.HasPrefix(tokenString, "Bearer ") {
 			http.Error(w, "Format token tidak valid", http.StatusUnauthorized)
 			return
 		}
-		
+
 		// Hilangkan prefix "Bearer "
 		tokenString = strings.TrimPrefix(tokenString, "Bearer ")
 
